@@ -223,8 +223,14 @@ map_block *mem_mgr::mmap(uint64_t addr, uint32_t length, uint32_t perms) {
    if (addr) {
       //user wants a specific address
       if (addr < map_min) {
-         addr = map_min;
-         orig = map_min;
+		 char msgbuf[256] = {0};
+		 qsnprintf(msgbuf, sizeof(msgbuf), 
+			 "The address 0x%X is less than 0x%X, if this is a Code segment, \nRebase to 0x%X, and set execute permissions",
+			 addr, map_min, map_min);		 
+		 warning(msgbuf);
+
+		 addr = map_min;
+		 orig = map_min;
       }
       map_block *n = next_block(addr);
       while (guest == 0 && addr >= map_min && addr <= max_alloc) {
