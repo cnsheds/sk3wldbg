@@ -440,7 +440,7 @@ int idaapi uni_start_process(const char * /*path*/,
       //need a stack too, just sling it somewhere
       //add it to uc->memory
       unsigned int stack_top = 0xffffe000;
-      uc->init_memmgr(0x100000, stack_top);
+      uc->init_memmgr(0, stack_top);
       uc->map_mem_zero(stack_top - 0x100000, stack_top, UC_PROT_READ | UC_PROT_WRITE | UC_PROT_EXEC, SDB_MAP_FIXED);
       stack_top -= 16;
       uc->set_sp(stack_top);
@@ -452,18 +452,40 @@ int idaapi uni_start_process(const char * /*path*/,
       //Also need to map in a stack and init stack pointer, this will be
       //architecture dependent since each arch has its own SP register
       //arch specific unicorns also need to set initial register state
+	   std::vector <std::pair<uint64_t, uint64_t>> load_info;
       segment_t *seg;
+	  for (seg = get_first_seg(); seg != NULL; seg = get_next_seg(seg->startEA)) {
+		  void *buf = NULL;
+		  ssize_t exact = (ssize_t)(seg->endEA - seg->startEA);
+		  if (uc->debug_mode != UC_MODE_16) {
+			  uint64_t p_vaddr = seg->startEA & ~0xfff;
+			  uint64_t p_vsize = alignsgm(seg->endEA);
+			  int last_idx = load_info.size() - 1;
+			  if (last_idx >= 0 && (load_info[last_idx].first + load_info[last_idx].second >= p_vaddr))
+				  load_info[last_idx].second += p_vsize;
+			  else
+				  load_info.push_back(std::make_pair(p_vaddr, p_vsize));
+		  }
+	  }
+
       for (seg = get_first_seg(); seg != NULL; seg = get_next_seg(seg->startEA)) {
-         void *buf;
+         void *buf = NULL;
          ssize_t exact = (ssize_t)(seg->endEA - seg->startEA);
          if (uc->debug_mode == UC_MODE_16) {
             buf = seg->startEA + (char*)buf16;
          }
-         else {
-            buf = uc->map_mem_zero(seg->startEA, seg->endEA, ida_to_uc_perms_map[seg->perm], SDB_MAP_FIXED);
+         else { //防止各段间有重合的情况发生, 做此处理
+			uint64_t map_size = alignsgm(seg->endEA);
+			uint64_t map_addr = get_maprange(load_info, seg->startEA & ~0xfff, map_size);
+			uint64_t map_offset = seg->startEA - map_addr;
+			// 从 seg->perm, 修改为 UC_PROT_ALL, 因为有些加壳程序, 这些段属性并不正确
+            buf = uc->map_mem_zero(map_addr, map_size, ida_to_uc_perms_map[UC_PROT_ALL], SDB_MAP_FIXED);
+			if (buf)	
+				buf = (char*)buf + map_offset;
          }
-         get_many_bytes(seg->startEA, buf, exact);
-      }
+		 if (buf)
+			 get_many_bytes(seg->startEA, buf, exact);
+	  }
 
       //need other ways to set PC, from start, user specified
       uc->set_pc(init_pc);
@@ -1861,7 +1883,7 @@ void *sk3wldbg::map_mem_zero(uint64_t startAddr, uint64_t endAddr, unsigned int 
    char msgbuf[4096];
    qsnprintf(msgbuf, sizeof(msgbuf), "map_mem_zero(%p, %p, 0x%x)\n", (void*)startAddr, (void*)endAddr, perms);
    msg("%s", msgbuf);
-   endAddr = (endAddr + 0xfff) & ~0xfff;
+   endAddr = (endAddr + 0xfff) & ~0xfff;	//进行0x1000对齐
    uint64_t pageAddr = startAddr & ~0xfff;
    uint64_t blockSize = endAddr - pageAddr;
    if (blockSize & 0xffffffff00000000ll) {

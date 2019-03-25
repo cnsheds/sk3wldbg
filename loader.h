@@ -22,6 +22,9 @@
 
 #include "sk3wldbg.h"
 
+uint64_t alignsgm(uint64_t addr);
+uint64_t get_maprange(std::vector <std::pair<uint64_t, uint64_t>>& sgms, uint64_t vaddr, uint64_t &vsize);
+
 bool loadImage(sk3wldbg *uc, void *img, size_t sz, const char *args, uint64_t init_pc);
 bool loadPE64(sk3wldbg *uc, void *img, size_t sz, const char *args, uint64_t init_pc);
 bool loadPE32(sk3wldbg *uc, void *img, size_t sz, const char *args, uint64_t init_pc);

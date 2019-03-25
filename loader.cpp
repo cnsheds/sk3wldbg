@@ -219,6 +219,11 @@ const char *linux_env[] = {
    NULL
 };
 
+uint64_t alignsgm(uint64_t addr)
+{
+	return (addr + 0xfff) & ~0xfff;
+}
+
 qstring *make_env(const char *env[], const char *userName, const char *hostName, bool windows = true) {
    qstring *res = new qstring();
    for (int i = 0; env[i]; i++) {
@@ -917,6 +922,20 @@ static uint64_t create_elf_env(sk3wldbg *uc, uint64_t sp, elf_aux *av, const cha
    return sp;
 }
 
+uint64_t get_maprange(std::vector <std::pair<uint64_t, uint64_t>>& sgms, uint64_t vaddr, uint64_t &vsize)
+{
+	for (uint16_t i = 0; i < sgms.size(); i++)
+	{
+		if (vaddr >= sgms[i].first && (vaddr + vsize) <= sgms[i].second)
+		{
+			vsize = sgms[i].second;
+			return sgms[i].first;
+		}
+	}
+
+	return 0;
+}
+
 bool loadElf64(sk3wldbg *uc, void *img, uint64_t sz, const char *args, uint64_t init_pc) {
    Elf64_Ehdr *elf = (Elf64_Ehdr*)img;
    uint32_t exec_stack = UC_PROT_EXEC;
@@ -946,21 +965,30 @@ bool loadElf64(sk3wldbg *uc, void *img, uint64_t sz, const char *args, uint64_t 
    //check for execstack so we can map the stack first
    //also find base address of binary
    uint64_t elf_base = 0xffffffffffffffffll;
+   std::vector <std::pair<uint64_t, uint64_t>> load_info;
    for (uint16_t i = 0; i < e_phnum; i++, h++) {
       uint32_t p_type = get_elf_32(&h->p_type, big_endian);
       uint32_t p_flags = get_elf_32(&h->p_flags, big_endian);
       if (p_type == PT_GNU_STACK) {
          if ((p_flags & PF_X) == 0) {
             //stack marked NX
-            exec_stack = 0;
-         }
-      }
-      else if (p_type == PT_LOAD) {
-         uint64_t p_vaddr = get_elf_64(&phdr->p_vaddr, big_endian) & ~0xfff;
-         if (p_vaddr < elf_base) {
-            elf_base = p_vaddr;
-         }
-      }
+			 exec_stack = 0;
+		 }
+	  }
+	  else if (p_type == PT_LOAD) {
+		  uint64_t p_vaddr = get_elf_64(&phdr->p_vaddr, big_endian) & ~0xfff;
+		  uint64_t p_vsize = alignsgm(get_elf_64(&phdr->p_memsz, big_endian));
+		  int last_idx = load_info.size() - 1;
+		  if (last_idx >= 0 && (load_info[last_idx].first + load_info[last_idx].second >= p_vaddr))
+			  load_info[last_idx].second += p_vsize;
+		  else
+			  load_info.push_back(std::make_pair(p_vaddr, p_vsize));
+
+		  if (p_vaddr < elf_base) {
+			  elf_base = p_vaddr;
+		  }
+	  }
+	  phdr++;
    }
    //ELF stack
    uint64_t stack_max = 0x7ffffffff000ll;
@@ -991,6 +1019,7 @@ bool loadElf64(sk3wldbg *uc, void *img, uint64_t sz, const char *args, uint64_t 
    uc->getRandomBytes(elf_fs + 0x29, 7);   //canary, low byte remains 0
    build_sane_elf64_gdt(uc, fs_base, init_pc, stack_top);
 
+   phdr = (Elf64_Phdr*)(e_phoff + (char*)img);
    uint64_t brk = 0;
    for (uint16_t i = 0; i < e_phnum; i++) {
       uint32_t p_type = get_elf_32(&phdr->p_type, big_endian);
@@ -1006,9 +1035,14 @@ bool loadElf64(sk3wldbg *uc, void *img, uint64_t sz, const char *args, uint64_t 
          uint64_t begin = p_vaddr & ~0xfff;
          uint64_t end = (p_vaddr + p_memsz + 0xfff) & ~0xfff;
 */
+		 // ²éÕÒºÏÊÊµÄÓ³ÉäÄÚ´æ·¶Î§
+		 uint64_t map_size = alignsgm(p_vaddr + p_memsz);
+		 uint64_t map_addr = get_maprange(load_info, p_vaddr & ~0xfff, map_size);
+		 //================================================================
+
          msg("ELF64 loader mapping %p bytes at %p, from file offset %p\n",
                (uint64_t)p_memsz, (uint64_t)p_vaddr, (uint64_t)p_offset);
-         void *block = uc->map_mem_zero(p_vaddr & ~0xfff, p_vaddr + p_memsz, ida_to_uc_perms_map[p_flags & 7], SDB_MAP_FIXED);
+         void *block = uc->map_mem_zero(map_addr, map_size, ida_to_uc_perms_map[p_flags & 7], SDB_MAP_FIXED);
          uint64_t endoff = p_offset + p_filesz;
          uint64_t offset = p_offset & ~0xfff;
          if ((p_flags & PF_W) == 0) { //not writeable, assume entire page is mmapped
@@ -1063,6 +1097,8 @@ bool loadElf32(sk3wldbg *uc, void *img, size_t sz, const char *args, uint64_t in
    uint16_t e_phnum = get_elf_16(&elf->e_phnum, big_endian);
 
    uint64_t elf_base = 0xffffffffffffffff;
+   std::vector <std::pair<uint64_t, uint64_t>> load_info;
+   uint64_t elf_loadsize = 0;
    //check for execstack so we can map the stack first
    for (uint16_t i = 0; i < e_phnum; i++, h++) {
       uint32_t p_type = get_elf_32(&h->p_type, big_endian);
@@ -1075,10 +1111,18 @@ bool loadElf32(sk3wldbg *uc, void *img, size_t sz, const char *args, uint64_t in
       }
       else if (p_type == PT_LOAD) {
          uint64_t p_vaddr = get_elf_32(&phdr->p_vaddr, big_endian) & ~0xfff;
+		 uint64_t p_vsize = alignsgm(get_elf_32(&phdr->p_memsz, big_endian));
+		 int last_idx = load_info.size() - 1;
+		 if (last_idx >= 0 && (load_info[last_idx].first + load_info[last_idx].second >= p_vaddr))
+			 load_info[last_idx].second += p_vsize;
+		 else
+			 load_info.push_back(std::make_pair(p_vaddr, p_vsize));
+
          if (p_vaddr < elf_base) {
             elf_base = p_vaddr;
          }
       }
+	  phdr++;
    }
    //ELF stack
    uint32_t stack_top = 0xffffe000;
@@ -1104,6 +1148,7 @@ bool loadElf32(sk3wldbg *uc, void *img, size_t sz, const char *args, uint64_t in
    stack_top = (uint32_t)create_elf_env(uc, stack_top, &av, args, false, big_endian);
    uc->set_sp(stack_top);
 
+   phdr = (Elf32_Phdr*)(e_phoff + (char*)img);
    uint32_t brk = 0;
    for (uint16_t i = 0; i < e_phnum; i++) {
       uint32_t p_type = get_elf_32(&phdr->p_type, big_endian);
@@ -1116,9 +1161,14 @@ bool loadElf32(sk3wldbg *uc, void *img, size_t sz, const char *args, uint64_t in
          uint32_t p_filesz = get_elf_32(&phdr->p_filesz, big_endian);
          brk = (p_vaddr + p_memsz + 0xfff) & ~0xfff;
 
+		 // ²éÕÒºÏÊÊµÄÓ³ÉäÄÚ´æ·¶Î§
+		 uint64_t map_size = alignsgm(p_vaddr + p_memsz);
+		 uint64_t map_addr = get_maprange(load_info, p_vaddr & ~0xfff, map_size);
+		 //================================================================
+
          msg("ELF32 loader mapping %p bytes at %p, from file offset %p\n",
                (uint64_t)p_memsz, (uint64_t)p_vaddr, (uint64_t)p_offset);
-         void *block = uc->map_mem_zero(p_vaddr & ~0xfff, p_vaddr + p_memsz, ida_to_uc_perms_map[p_flags & 7], SDB_MAP_FIXED);
+         void *block = uc->map_mem_zero(map_addr, map_size, ida_to_uc_perms_map[p_flags & 7], SDB_MAP_FIXED);
          uint64_t endoff = p_offset + p_filesz;
          uint64_t offset = p_offset & ~0xfff;
          if ((p_flags & PF_W) == 0) { //not writeable, assume entire page is mmapped

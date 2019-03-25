@@ -258,7 +258,7 @@ map_block *mem_mgr::mmap(uint64_t addr, uint32_t length, uint32_t perms, uint32_
          if (b) {
             //desired address is already in use
             if (flags & SDB_MAP_FIXED) {
-               return NULL;  //can't grant user request
+               return b;  //can't grant user request, 修改当这个内存范围已申请时返回上一次的地址空间
             }
             //compute the next lower address that might fit the entire request block
             addr = b->guest - length;
