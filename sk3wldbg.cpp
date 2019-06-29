@@ -1606,7 +1606,9 @@ sk3wldbg::sk3wldbg(const char *procname, uc_arch arch, uc_mode mode, const char 
    finished = false;
    single_step = false;
    registered_menu = false;
-#if IDA_SDK_VERSION >= 700
+#if IDA_SDK_VERSION > 700
+   if (inf_is_be()) {
+#elif IDA_SDK_VERSION == 700
    if (inf.is_be()) {
 #else
    if (inf.mf) {   
