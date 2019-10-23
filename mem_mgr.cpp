@@ -205,6 +205,7 @@ map_block *mem_mgr::mmap(uint64_t addr, uint32_t length, uint32_t perms, uint32_
    bool found = false;
    uint64_t orig = addr;
    map_block *b = NULL;
+   length = ALIGN_PAGE_UP(length);
    if (length & 0xfff) {
       //length must be multiple of page size
 #ifdef DEBUG

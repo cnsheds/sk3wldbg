@@ -13,6 +13,9 @@
       <UniqueIdentifier>{80893d90-0de1-4ed1-b3e2-6b799d770fe6}</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
+    <Filter Include="native">
+      <UniqueIdentifier>{23568b88-ecae-4e9b-82a1-351f65253a5f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="loader.cpp">
@@ -47,6 +50,12 @@
     </ClCompile>
     <ClCompile Include="idc_funcs.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="android_memory.cpp">
+      <Filter>native</Filter>
+    </ClCompile>
+    <ClCompile Include="XSyscall_handle.cpp">
+      <Filter>native</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -88,6 +97,12 @@
     </ClInclude>
     <ClInclude Include="heap.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="android_memory.h">
+      <Filter>native</Filter>
+    </ClInclude>
+    <ClInclude Include="XSyscall_handle.h">
+      <Filter>native</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

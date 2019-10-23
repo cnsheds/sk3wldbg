@@ -77,6 +77,7 @@
 
 #include "sk3wldbg.h"
 #include "loader.h"
+#include "XSyscall_handle.h"
 
 #ifdef DEBUG
 #undef DEBUG 
@@ -458,7 +459,7 @@ int idaapi uni_start_process(const char * /*path*/,
 		  void *buf = NULL;
 		  ssize_t exact = (ssize_t)(seg->endEA - seg->startEA);
 		  if (uc->debug_mode != UC_MODE_16) {
-			  uint64_t p_vaddr = seg->startEA & ~0xfff;
+			  uint64_t p_vaddr = ALIGN_PAGE_DOWN(seg->startEA);
 			  uint64_t p_vsize = alignsgm(seg->endEA);
 			  int last_idx = load_info.size() - 1;
 			  if (last_idx >= 0 && (load_info[last_idx].first + load_info[last_idx].second >= p_vaddr))
@@ -476,7 +477,7 @@ int idaapi uni_start_process(const char * /*path*/,
          }
          else { //防止各段间有重合的情况发生, 做此处理
 			uint64_t map_size = alignsgm(seg->endEA);
-			uint64_t map_addr = get_maprange(load_info, seg->startEA & ~0xfff, map_size);
+			uint64_t map_addr = get_maprange(load_info, ALIGN_PAGE_DOWN(seg->startEA), map_size);
 			uint64_t map_offset = seg->startEA - map_addr;
 			// 从 seg->perm, 修改为 UC_PROT_ALL, 因为有些加壳程序, 这些段属性并不正确
             buf = uc->map_mem_zero(map_addr, map_size, ida_to_uc_perms_map[UC_PROT_ALL], SDB_MAP_FIXED);
@@ -1885,8 +1886,9 @@ void *sk3wldbg::map_mem_zero(uint64_t startAddr, uint64_t endAddr, unsigned int 
    char msgbuf[4096];
    qsnprintf(msgbuf, sizeof(msgbuf), "map_mem_zero(%p, %p, 0x%x)\n", (void*)startAddr, (void*)endAddr, perms);
    msg("%s", msgbuf);
-   endAddr = (endAddr + 0xfff) & ~0xfff;	//进行0x1000对齐
-   uint64_t pageAddr = startAddr & ~0xfff;
+   
+   endAddr = ALIGN_PAGE_UP(endAddr);
+   uint64_t pageAddr = ALIGN_PAGE_DOWN(startAddr);
    uint64_t blockSize = endAddr - pageAddr;
    if (blockSize & 0xffffffff00000000ll) {
       //too large
@@ -2000,6 +2002,8 @@ bool sk3wldbg::set_sp(uint64_t sp) {
 void intr_hook(uc_engine *uc, uint32_t intno, void *user_data) {
    char errmsg[1024];
    errmsg[0] = 0;
+
+   g_interrupt_handle.process_interrupt(uc, intno);
 #ifdef DEBUG
    qsnprintf(errmsg, sizeof(errmsg), "intr_hook(0x%x)", intno);
    msg("%s\n", errmsg); 
@@ -2170,13 +2174,12 @@ void sk3wldbg::install_initial_hooks() {
       mem_fault_hook = 0;
       msg("Failed on uc_hook_add(generic_mem_fault_hook) with error returned: %u\n", err);
    }
-/*
+
    err = uc_hook_add(uc, &ihook, UC_HOOK_INTR, (void*)intr_hook, this, 1, 0);
    if (err) {
       ihook = 0;
       msg("Failed on uc_hook_add(intr_hook) with error returned: %u\n", err);
    }
-*/
 }
 
 bool sk3wldbg::read_register(int regidx, regval_t *value) {

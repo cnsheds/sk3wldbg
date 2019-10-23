@@ -26,6 +26,12 @@
 
 #define SDB_MAP_FIXED 1
 
+#define UNICORN_PAGE_SIZE 0x1000
+
+#define ALIGN_PAGE_DOWN(x) (x & ~(UNICORN_PAGE_SIZE - 1))
+#define ALIGN_PAGE_UP(x)  (x + UNICORN_PAGE_SIZE - 1) & ~(UNICORN_PAGE_SIZE - 1)
+
+
 struct map_block {
    void *host;
    uint64_t guest;

@@ -1037,22 +1037,22 @@ bool loadElf64(sk3wldbg *uc, void *img, uint64_t sz, const char *args, uint64_t 
 */
 		 // ²éÕÒºÏÊÊµÄÓ³ÉäÄÚ´æ·¶Î§
 		 uint64_t map_size = alignsgm(p_vaddr + p_memsz);
-		 uint64_t map_addr = get_maprange(load_info, p_vaddr & ~0xfff, map_size);
+		 uint64_t map_addr = get_maprange(load_info, ALIGN_PAGE_DOWN(p_vaddr), map_size);
 		 //================================================================
 
          msg("ELF64 loader mapping %p bytes at %p, from file offset %p\n",
                (uint64_t)p_memsz, (uint64_t)p_vaddr, (uint64_t)p_offset);
          void *block = uc->map_mem_zero(map_addr, map_size, ida_to_uc_perms_map[p_flags & 7], SDB_MAP_FIXED);
          uint64_t endoff = p_offset + p_filesz;
-         uint64_t offset = p_offset & ~0xfff;
+         uint64_t offset = ALIGN_PAGE_DOWN(p_offset);
          if ((p_flags & PF_W) == 0) { //not writeable, assume entire page is mmapped
-            endoff = (endoff + 0xfff) & ~0xfff;
+            endoff = ALIGN_PAGE_UP(endoff);
          }
          if (endoff > sz) {
             endoff = sz;
          }
          msg("Copying bytes %p:%p into block\n", (uint64_t)offset, (uint64_t)endoff);
-         memcpy(block, offset + (char*)img, (size_t)(endoff - offset));
+         memcpy((char*)block + offset, offset + (char*)img, (size_t)(endoff - offset));
 /*
          uc_err err = uc_mem_write(uc->uc, begin, offset + (char*)img, (size_t)(endoff - offset));
          if (err != UC_ERR_OK) {
@@ -1163,22 +1163,22 @@ bool loadElf32(sk3wldbg *uc, void *img, size_t sz, const char *args, uint64_t in
 
 		 // ²éÕÒºÏÊÊµÄÓ³ÉäÄÚ´æ·¶Î§
 		 uint64_t map_size = alignsgm(p_vaddr + p_memsz);
-		 uint64_t map_addr = get_maprange(load_info, p_vaddr & ~0xfff, map_size);
+		 uint64_t map_addr = get_maprange(load_info, ALIGN_PAGE_DOWN(p_vaddr), map_size);
 		 //================================================================
 
          msg("ELF32 loader mapping %p bytes at %p, from file offset %p\n",
                (uint64_t)p_memsz, (uint64_t)p_vaddr, (uint64_t)p_offset);
          void *block = uc->map_mem_zero(map_addr, map_size, ida_to_uc_perms_map[p_flags & 7], SDB_MAP_FIXED);
          uint64_t endoff = p_offset + p_filesz;
-         uint64_t offset = p_offset & ~0xfff;
+         uint64_t offset = ALIGN_PAGE_DOWN(p_offset);
          if ((p_flags & PF_W) == 0) { //not writeable, assume entire page is mmapped
-            endoff = (endoff + 0xfff) & ~0xfff;
+            endoff = ALIGN_PAGE_UP(endoff);
          }
          if (endoff > sz) {
             endoff = sz;
          }
          msg("Copying bytes %p:%p into block\n", (uint64_t)offset, (uint64_t)endoff);
-         memcpy(block, offset + (char*)img, (size_t)(endoff - offset));
+         memcpy((char*)block + offset, offset + (char*)img, (size_t)(endoff - offset));
 
 /*
          uc_err err = uc_mem_write(uc->uc, begin, offset + (char*)img, endoff - offset);

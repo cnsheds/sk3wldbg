@@ -20,6 +20,7 @@
 #include "sk3wldbg_arm.h"
 #include <idp.hpp>
 #include <segment.hpp>
+#include "XSyscall_handle.h"
 #if IDA_SDK_VERSION >= 700
 #include <segregs.hpp>
 #else
@@ -147,6 +148,8 @@ void sk3wldbg_arm::check_mode(ea_t addr) {
 //      msg("Enabling thumb mode\n");
       thumb = 1;
    }
+   m_android_memhook.set_memmgr(memmgr);
+   m_android_memhook.init_hook(&m_syscall_handle);
 }
 
 bool sk3wldbg_arm::save_ret_addr(uint64_t retaddr) {
@@ -176,6 +179,8 @@ void sk3wldbg_aarch64::check_mode(ea_t addr) {
    if (thumb) {
       debug_mode = (uc_mode)((int)UC_MODE_THUMB | (int)debug_mode);
    }
+   m_android_memhook.set_memmgr(memmgr);
+   m_android_memhook.init_hook(&m_syscall_handle);
 }
 
 bool sk3wldbg_aarch64::save_ret_addr(uint64_t retaddr) {

@@ -439,6 +439,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="android_memory.cpp" />
     <ClCompile Include="idc_funcs.cpp" />
     <ClCompile Include="loader.cpp" />
     <ClCompile Include="mem_mgr.cpp" />
@@ -450,8 +451,10 @@
     <ClCompile Include="sk3wldbg_ppc.cpp" />
     <ClCompile Include="sk3wldbg_sparc.cpp" />
     <ClCompile Include="sk3wldbg_x86.cpp" />
+    <ClCompile Include="XSyscall_handle.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="android_memory.h" />
     <ClInclude Include="elf_local.h" />
     <ClInclude Include="heap.h" />
     <ClInclude Include="idc_funcs.h" />
@@ -465,6 +468,7 @@
     <ClInclude Include="sk3wldbg_ppc.h" />
     <ClInclude Include="sk3wldbg_sparc.h" />
     <ClInclude Include="sk3wldbg_x86.h" />
+    <ClInclude Include="XSyscall_handle.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
