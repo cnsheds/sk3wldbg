@@ -976,11 +976,12 @@ bool loadElf64(sk3wldbg *uc, void *img, uint64_t sz, const char *args, uint64_t 
 		 }
 	  }
 	  else if (p_type == PT_LOAD) {
-		  uint64_t p_vaddr = get_elf_64(&phdr->p_vaddr, big_endian) & ~0xfff;
+		  uint64_t p_vaddr_o = get_elf_64(&phdr->p_vaddr, big_endian);
+		  uint64_t p_vaddr = ALIGN_PAGE_DOWN(p_vaddr_o);
 		  uint64_t p_vsize = alignsgm(get_elf_64(&phdr->p_memsz, big_endian));
 		  int last_idx = load_info.size() - 1;
 		  if (last_idx >= 0 && (load_info[last_idx].first + load_info[last_idx].second >= p_vaddr))
-			  load_info[last_idx].second += p_vsize;
+			  load_info[last_idx].second += p_vsize + ALIGN_PAGE_UP(p_vaddr_o) - p_vaddr;
 		  else
 			  load_info.push_back(std::make_pair(p_vaddr, p_vsize));
 
@@ -1035,24 +1036,27 @@ bool loadElf64(sk3wldbg *uc, void *img, uint64_t sz, const char *args, uint64_t 
          uint64_t begin = p_vaddr & ~0xfff;
          uint64_t end = (p_vaddr + p_memsz + 0xfff) & ~0xfff;
 */
-		 // ²éÕÒºÏÊÊµÄÓ³ÉäÄÚ´æ·¶Î§
-		 uint64_t map_size = alignsgm(p_vaddr + p_memsz);
-		 uint64_t map_addr = get_maprange(load_info, ALIGN_PAGE_DOWN(p_vaddr), map_size);
-		 //================================================================
+		 if (p_memsz > 0)
+		 {
+			 // ²éÕÒºÏÊÊµÄÓ³ÉäÄÚ´æ·¶Î§
+			 uint64_t map_size = alignsgm(p_vaddr + p_memsz);
+			 uint64_t map_addr = get_maprange(load_info, ALIGN_PAGE_DOWN(p_vaddr), map_size);
+			 //================================================================
 
-         msg("ELF64 loader mapping %p bytes at %p, from file offset %p\n",
-               (uint64_t)p_memsz, (uint64_t)p_vaddr, (uint64_t)p_offset);
-         void *block = uc->map_mem_zero(map_addr, map_size, ida_to_uc_perms_map[p_flags & 7], SDB_MAP_FIXED);
-         uint64_t endoff = p_offset + p_filesz;
-         uint64_t offset = ALIGN_PAGE_DOWN(p_offset);
-         if ((p_flags & PF_W) == 0) { //not writeable, assume entire page is mmapped
-            endoff = ALIGN_PAGE_UP(endoff);
-         }
-         if (endoff > sz) {
-            endoff = sz;
-         }
-         msg("Copying bytes %p:%p into block\n", (uint64_t)offset, (uint64_t)endoff);
-         memcpy((char*)block + offset, offset + (char*)img, (size_t)(endoff - offset));
+			 msg("ELF64 loader mapping %p bytes at %p, from file offset %p\n",
+				 (uint64_t)p_memsz, (uint64_t)p_vaddr, (uint64_t)p_offset);
+			 void *block = uc->map_mem_zero(map_addr, map_size, ida_to_uc_perms_map[p_flags & 7], SDB_MAP_FIXED);
+			 uint64_t endoff = p_offset + p_filesz;
+			 uint64_t offset = ALIGN_PAGE_DOWN(p_offset);
+			 if ((p_flags & PF_W) == 0) { //not writeable, assume entire page is mmapped
+				 endoff = ALIGN_PAGE_UP(endoff);
+			 }
+			 if (endoff > sz) {
+				 endoff = sz;
+			 }
+			 msg("Copying bytes %p:%p into block\n", (uint64_t)offset, (uint64_t)endoff);
+			 memcpy((char*)block + ALIGN_PAGE_DOWN(p_vaddr), offset + (char*)img, (size_t)(endoff - offset));
+		 }
 /*
          uc_err err = uc_mem_write(uc->uc, begin, offset + (char*)img, (size_t)(endoff - offset));
          if (err != UC_ERR_OK) {
@@ -1101,28 +1105,29 @@ bool loadElf32(sk3wldbg *uc, void *img, size_t sz, const char *args, uint64_t in
    uint64_t elf_loadsize = 0;
    //check for execstack so we can map the stack first
    for (uint16_t i = 0; i < e_phnum; i++, h++) {
-      uint32_t p_type = get_elf_32(&h->p_type, big_endian);
-      uint32_t p_flags = get_elf_32(&h->p_flags, big_endian);
-      if (p_type == PT_GNU_STACK) {
-         if ((p_flags & PF_X) == 0) {
-            //stack marked NX
-            exec_stack = 0;
-         }
-      }
-      else if (p_type == PT_LOAD) {
-         uint64_t p_vaddr = get_elf_32(&phdr->p_vaddr, big_endian) & ~0xfff;
-		 uint64_t p_vsize = alignsgm(get_elf_32(&phdr->p_memsz, big_endian));
-		 int last_idx = load_info.size() - 1;
-		 if (last_idx >= 0 && (load_info[last_idx].first + load_info[last_idx].second >= p_vaddr))
-			 load_info[last_idx].second += p_vsize;
-		 else
-			 load_info.push_back(std::make_pair(p_vaddr, p_vsize));
+	   uint32_t p_type = get_elf_32(&h->p_type, big_endian);
+	   uint32_t p_flags = get_elf_32(&h->p_flags, big_endian);
+	   if (p_type == PT_GNU_STACK) {
+		   if ((p_flags & PF_X) == 0) {
+			   //stack marked NX
+			   exec_stack = 0;
+		   }
+	   }
+	   else if (p_type == PT_LOAD) {
+		   uint64_t p_vaddr_o = get_elf_32(&phdr->p_vaddr, big_endian);
+		   uint64_t p_vaddr = ALIGN_PAGE_DOWN(p_vaddr_o);
+		   uint64_t p_vsize = alignsgm(get_elf_32(&phdr->p_memsz, big_endian));
+		   int last_idx = load_info.size() - 1;
+		   if (last_idx >= 0 && (load_info[last_idx].first + load_info[last_idx].second >= p_vaddr))
+			   load_info[last_idx].second += p_vsize + ALIGN_PAGE_UP(p_vaddr_o) - p_vaddr;
+		   else
+			   load_info.push_back(std::make_pair(p_vaddr, p_vsize));
 
-         if (p_vaddr < elf_base) {
-            elf_base = p_vaddr;
-         }
-      }
-	  phdr++;
+		   if (p_vaddr < elf_base) {
+			   elf_base = p_vaddr;
+		   }
+	   }
+	   phdr++;
    }
    //ELF stack
    uint32_t stack_top = 0xffffe000;
@@ -1161,25 +1166,27 @@ bool loadElf32(sk3wldbg *uc, void *img, size_t sz, const char *args, uint64_t in
          uint32_t p_filesz = get_elf_32(&phdr->p_filesz, big_endian);
          brk = (p_vaddr + p_memsz + 0xfff) & ~0xfff;
 
-		 // ²éÕÒºÏÊÊµÄÓ³ÉäÄÚ´æ·¶Î§
-		 uint64_t map_size = alignsgm(p_vaddr + p_memsz);
-		 uint64_t map_addr = get_maprange(load_info, ALIGN_PAGE_DOWN(p_vaddr), map_size);
-		 //================================================================
+		 if (p_memsz > 0)
+		 {
+			 // ²éÕÒºÏÊÊµÄÓ³ÉäÄÚ´æ·¶Î§
+			 uint64_t map_size = alignsgm(p_vaddr + p_memsz);
+			 uint64_t map_addr = get_maprange(load_info, ALIGN_PAGE_DOWN(p_vaddr), map_size);
+			 //================================================================
 
-         msg("ELF32 loader mapping %p bytes at %p, from file offset %p\n",
-               (uint64_t)p_memsz, (uint64_t)p_vaddr, (uint64_t)p_offset);
-         void *block = uc->map_mem_zero(map_addr, map_size, ida_to_uc_perms_map[p_flags & 7], SDB_MAP_FIXED);
-         uint64_t endoff = p_offset + p_filesz;
-         uint64_t offset = ALIGN_PAGE_DOWN(p_offset);
-         if ((p_flags & PF_W) == 0) { //not writeable, assume entire page is mmapped
-            endoff = ALIGN_PAGE_UP(endoff);
-         }
-         if (endoff > sz) {
-            endoff = sz;
-         }
-         msg("Copying bytes %p:%p into block\n", (uint64_t)offset, (uint64_t)endoff);
-         memcpy((char*)block + offset, offset + (char*)img, (size_t)(endoff - offset));
-
+			 msg("ELF32 loader mapping %p bytes at %p, from file offset %p\n",
+				 (uint64_t)p_memsz, (uint64_t)p_vaddr, (uint64_t)p_offset);
+			 void *block = uc->map_mem_zero(map_addr, map_size, ida_to_uc_perms_map[p_flags & 7], SDB_MAP_FIXED);
+			 uint64_t endoff = p_offset + p_filesz;
+			 uint64_t offset = ALIGN_PAGE_DOWN(p_offset);
+			 if ((p_flags & PF_W) == 0) { //not writeable, assume entire page is mmapped
+				 endoff = ALIGN_PAGE_UP(endoff);
+			 }
+			 if (endoff > sz) {
+				 endoff = sz;
+			 }
+			 msg("Copying bytes %p:%p into block\n", (uint64_t)offset, (uint64_t)endoff);
+			 memcpy((char*)block + ALIGN_PAGE_DOWN(p_vaddr), offset + (char*)img, (size_t)(endoff - offset));
+		 }
 /*
          uc_err err = uc_mem_write(uc->uc, begin, offset + (char*)img, endoff - offset);
          if (err != UC_ERR_OK) {
