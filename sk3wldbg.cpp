@@ -460,12 +460,12 @@ int idaapi uni_start_process(const char * /*path*/,
 		  ssize_t exact = (ssize_t)(seg->endEA - seg->startEA);
 		  if (uc->debug_mode != UC_MODE_16) {
 			  uint64_t p_vaddr = ALIGN_PAGE_DOWN(seg->startEA);
-			  uint64_t p_vsize = alignsgm(seg->endEA);
+			  uint64_t p_vend_addr = alignsgm(seg->endEA);
 			  int last_idx = load_info.size() - 1;
-			  if (last_idx >= 0 && (load_info[last_idx].first + load_info[last_idx].second >= p_vaddr))
-				  load_info[last_idx].second += p_vsize;
+			  if (last_idx >= 0 && (load_info[last_idx].second >= p_vaddr))
+				  load_info[last_idx].second = p_vend_addr;
 			  else
-				  load_info.push_back(std::make_pair(p_vaddr, p_vsize));
+				  load_info.push_back(std::make_pair(p_vaddr, p_vend_addr));
 		  }
 	  }
 
@@ -476,11 +476,11 @@ int idaapi uni_start_process(const char * /*path*/,
             buf = seg->startEA + (char*)buf16;
          }
          else { //防止各段间有重合的情况发生, 做此处理
-			uint64_t map_size = alignsgm(seg->endEA);
-			uint64_t map_addr = get_maprange(load_info, ALIGN_PAGE_DOWN(seg->startEA), map_size);
+			uint64_t map_end_addr = alignsgm(seg->endEA);
+			uint64_t map_addr = get_maprange(load_info, ALIGN_PAGE_DOWN(seg->startEA), map_end_addr);
 			uint64_t map_offset = seg->startEA - map_addr;
 			// 从 seg->perm, 修改为 UC_PROT_ALL, 因为有些加壳程序, 这些段属性并不正确
-            buf = uc->map_mem_zero(map_addr, map_size, ida_to_uc_perms_map[UC_PROT_ALL], SDB_MAP_FIXED);
+            buf = uc->map_mem_zero(map_addr, map_end_addr, ida_to_uc_perms_map[UC_PROT_ALL], SDB_MAP_FIXED);
 			if (buf)	
 				buf = (char*)buf + map_offset;
          }

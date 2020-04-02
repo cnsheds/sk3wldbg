@@ -922,13 +922,13 @@ static uint64_t create_elf_env(sk3wldbg *uc, uint64_t sp, elf_aux *av, const cha
    return sp;
 }
 
-uint64_t get_maprange(std::vector <std::pair<uint64_t, uint64_t>>& sgms, uint64_t vaddr, uint64_t &vsize)
+uint64_t get_maprange(std::vector <std::pair<uint64_t, uint64_t>>& sgms, uint64_t vaddr, uint64_t &vend_addr)
 {
 	for (uint16_t i = 0; i < sgms.size(); i++)
 	{
-		if (vaddr >= sgms[i].first && (vaddr + vsize) <= sgms[i].second)
+		if (vaddr >= sgms[i].first && vend_addr <= sgms[i].second)
 		{
-			vsize = sgms[i].second;
+			vend_addr = sgms[i].second;
 			return sgms[i].first;
 		}
 	}
