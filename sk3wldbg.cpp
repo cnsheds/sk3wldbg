@@ -401,7 +401,8 @@ int idaapi uni_start_process(const char * /*path*/,
    } while (a_thread == (thid_t)uc->the_process);
    uc->the_threads.push_back(a_thread);
 
-   FILE *bin = fopen(input_path, "rb");
+   //修改不加载原始文件, 仅加载IDA中的段
+   FILE* bin = nullptr; // fopen(input_path, "rb");
    bool loaded = false;
    if (bin != NULL) {
       msg("found input file %s\n", input_path);
