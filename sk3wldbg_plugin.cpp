@@ -66,7 +66,7 @@
 static bool hooked = false;
 
 #if (IDA_SDK_VERSION >= 750)
-size_t idaapi plugin_init(void);
+plugmod_t* idaapi plugin_init(void);
 #else
 int idaapi plugin_init(void);
 #endif
@@ -168,7 +168,7 @@ static int idaapi ui_hook(void *user_data, int notification_code, va_list va) {
 //      See the hook_to_notification_point() function.
 //
 #if (IDA_SDK_VERSION >= 750)
-size_t idaapi plugin_init(void)
+plugmod_t* idaapi plugin_init(void)
 #else
 int idaapi plugin_init(void)
 #endif
