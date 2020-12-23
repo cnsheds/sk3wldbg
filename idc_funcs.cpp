@@ -36,7 +36,7 @@
 #include "loader.h"
 #include "idc_funcs.h"
 
-static sk3wldbg *uc;
+sk3wldbg *g_sk3wl_uc;
 
 #ifdef _WIN32
 #define snprintf _snprintf
@@ -96,7 +96,7 @@ void createNewSegment(const char *name, ea_t base, uint32_t size, uint32_t perms
    segment_t s;
    s.startEA = base;
    s.endEA = base + size;
-   s.align = saRelPara;
+   s.align = saRelByte;
    s.comb = scPub;
    s.perm = (uint8_t)perms;
    s.bitness = (uint8_t)bitness;
@@ -121,7 +121,7 @@ void createNewSegment(const char *name, ea_t base, uint32_t size, uint32_t perms
 
 /*
  * native implementation of sk3wl_mmap.
- * long sk3wl_mmap(long base, long size, lonf perms)
+ * long sk3wl_mmap(long base, long size, long perms)
  */
 static error_t idaapi idc_mmap(idc_value_t *argv, idc_value_t *res) {
    res->vtype = VT_INT64;
@@ -130,15 +130,15 @@ static error_t idaapi idc_mmap(idc_value_t *argv, idc_value_t *res) {
       uint64_t base = (uint64_t)argv[0].i64;
       unsigned int sz = (unsigned int)argv[1].num;
       unsigned int perms = (unsigned int)argv[2].num & SEGPERM_MAXVAL;
-      if (uc->map_mem_zero(base, base + sz, ida_to_uc_perms_map[perms])) {
+      if (g_sk3wl_uc->map_mem_zero(base, base + sz, ida_to_uc_perms_map[perms])) {
          qstring seg_name = "mmap_";
-         map_block *mb = uc->memmgr->find_block(base);
+         map_block *mb = g_sk3wl_uc->memmgr->find_block(base);
          seg_name.sprnt("mmap_%p", mb->guest);
          uint32_t bitness = 1;  //default to 32
-         if (uc->debug_mode & UC_MODE_16) {
+         if (g_sk3wl_uc->debug_mode & UC_MODE_16) {
             bitness = 0;
          }
-         else if (uc->debug_mode & UC_MODE_64) {
+         else if (g_sk3wl_uc->debug_mode & UC_MODE_64) {
             bitness = 2;
          }
          createNewSegment(seg_name.c_str(), (ea_t)base, sz, perms, bitness);
@@ -158,7 +158,7 @@ static error_t idaapi idc_munmap(idc_value_t *argv, idc_value_t *res) {
    if (argv[0].vtype == VT_INT64 && argv[1].vtype == VT_LONG) {
       uint64_t base = (uint64_t)argv[0].i64;
       unsigned int sz = (unsigned int)argv[1].num;
-      uc->memmgr->munmap(base, sz);
+      g_sk3wl_uc->memmgr->munmap(base, sz);
       add_segm(0, (ea_t)base, (ea_t)base + sz, "delsegxxx", "DATA", ADDSEG_QUIET | ADDSEG_NOAA);
       del_segm((ea_t)base, SEGMOD_KILL);
    }
@@ -174,7 +174,7 @@ static error_t idaapi idc_munmap(idc_value_t *argv, idc_value_t *res) {
 void register_funcs(sk3wldbg *_uc) {
    static const char idc_long_long[] = { VT_INT64, VT_LONG, 0 };
    static const char idc_long_long_long[] = { VT_INT64, VT_LONG, VT_LONG, 0 };
-   uc = _uc;
+   g_sk3wl_uc = _uc;
    set_idc_func_ex("sk3wl_mmap", idc_mmap, idc_long_long_long, EXTFUN_BASE);
    set_idc_func_ex("sk3wl_munmap", idc_munmap, idc_long_long, EXTFUN_BASE);
 }

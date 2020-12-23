@@ -1,5 +1,10 @@
 #include "android_memory.h"
+#include <ida.hpp>
+#include "sk3wldbg.h"
 
+extern sk3wldbg *g_sk3wl_uc;
+
+void createNewSegment(const char *name, ea_t base, uint32_t size, uint32_t perms, uint32_t bitness);
 
 android_memory::android_memory()
 {
@@ -21,15 +26,24 @@ void* android_memory::handle_mmap2(uc_engine* uc, syscall_args& args)
 	// MAP_ANONYMOUS	0x20
 	//
 	map_block *pblock = nullptr;
-	if (args.arg[0])
+	uint64_t base = args.arg[0];
+
+	if ((pblock = memmgr->mmap(args.arg[0], args.arg[1], args.arg[2], base ? SDB_MAP_FIXED : 0)))
 	{
-		if ((pblock = memmgr->mmap(args.arg[0], args.arg[1], args.arg[2], SDB_MAP_FIXED)))
-			return reinterpret_cast<void*>(args.arg[0]);
+		qstring seg_name = "mmap_";
+		seg_name.sprnt("mmap_%p", pblock->guest);
+		uint32_t bitness = 1;  //default to 32
+		if (g_sk3wl_uc->debug_mode & UC_MODE_16) {
+			bitness = 0;
+		}
+		else if (g_sk3wl_uc->debug_mode & UC_MODE_64) {
+			bitness = 2;
+		}
+		createNewSegment(seg_name.c_str(), (ea_t)pblock->guest, args.arg[1], args.arg[2], bitness);
+
+		return reinterpret_cast<void*>(pblock->guest);
 	}
-	else
-		if ((pblock = memmgr->mmap(args.arg[0], args.arg[1], args.arg[2])))
-			return reinterpret_cast<void*>(pblock->guest);
-		
+
 	return nullptr;
 }
 

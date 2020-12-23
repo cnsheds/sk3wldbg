@@ -147,9 +147,9 @@ map_block *mem_mgr::prev_block(uint64_t addr) {
 void *mem_mgr::to_host_ptr(uint64_t addr) {
    map_block *b = find_block(addr);
    if (b) {
-      return (addr - b->guest) + (char*)b->host; 
+      return (addr - b->guest) + (char*)b->host;
    }
-   return NULL;   
+   return NULL;
 }
 
 //node must be non-null and in the tree (returned by find)
@@ -219,7 +219,7 @@ map_block *mem_mgr::mmap(uint64_t addr, uint32_t length, uint32_t perms, uint32_
       msg("mmap: non-aligned address\n");
 #endif
       return NULL;
-   }   
+   }
    if (length > max_block) {
       //out of memory
 #ifdef DEBUG
@@ -301,7 +301,7 @@ map_block *mem_mgr::mmap(uint64_t addr, uint32_t length, uint32_t perms, uint32_
                }
                else {
                   //hit bottom;
-                  break;   
+                  break;
                }
             }
          }
@@ -403,7 +403,7 @@ void mem_mgr::munmap(uint64_t addr, uint32_t length) {
    uint64_t end = addr + length;
    map_block *b = find_block(addr);
    if (b) {
-      uc_mem_unmap(uc, b->guest, b->length);   
+      uc_mem_unmap(uc, b->guest, b->length);
    }
    do {
       if (b) {
