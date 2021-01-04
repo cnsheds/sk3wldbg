@@ -36,25 +36,25 @@ void XSyscall_handle::set_handle(uint32_t sysno, syscall_handle handler)
 
 int XSyscall_handle::handle_syscall(uc_engine* uc)
 {
-	uint32_t idx;
-	_args.zero();
+	uint32_t idx = 0;
 	uc_reg_read(uc, UC_ARM_REG_R7, &idx);
-	uc_reg_read(uc, UC_ARM_REG_R0, &_args.arg[0]);
-	uc_reg_read(uc, UC_ARM_REG_R1, &_args.arg[1]);
-	uc_reg_read(uc, UC_ARM_REG_R2, &_args.arg[2]);
-	uc_reg_read(uc, UC_ARM_REG_R3, &_args.arg[3]);
-	uc_reg_read(uc, UC_ARM_REG_R4, &_args.arg[4]);
-	uc_reg_read(uc, UC_ARM_REG_R5, &_args.arg[5]);
-	uc_reg_read(uc, UC_ARM_REG_R6, &_args.arg[6]);
-
 	if (_handles.find(idx) != _handles.end())
 	{
+		_args.zero();
+		uc_reg_read(uc, UC_ARM_REG_R0, &_args.arg[0]);
+		uc_reg_read(uc, UC_ARM_REG_R1, &_args.arg[1]);
+		uc_reg_read(uc, UC_ARM_REG_R2, &_args.arg[2]);
+		uc_reg_read(uc, UC_ARM_REG_R3, &_args.arg[3]);
+		uc_reg_read(uc, UC_ARM_REG_R4, &_args.arg[4]);
+		uc_reg_read(uc, UC_ARM_REG_R5, &_args.arg[5]);
+		uc_reg_read(uc, UC_ARM_REG_R6, &_args.arg[6]);
+
 		void* result = _handles[idx].callback(uc, _args);
 		if (result != nullptr)
 		{
 			uc_reg_write(uc, UC_ARM_REG_R0, &result);
 		}
 	}
-	
+
 	return 0;
 }

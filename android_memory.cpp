@@ -4,7 +4,6 @@
 
 extern sk3wldbg *g_sk3wl_uc;
 
-void createNewSegment(const char *name, ea_t base, uint32_t size, uint32_t perms, uint32_t bitness);
 
 android_memory::android_memory()
 {
@@ -19,9 +18,9 @@ void android_memory::set_memmgr(mem_mgr * mgr)
 void* android_memory::handle_mmap2(uc_engine* uc, syscall_args& args)
 {
 	//void *mmap2(void *addr, size_t length, int prot, int flags, int fd, off_t pgoffset);
-	// MAP_FILE	    0
-	// MAP_SHARED	0x01
-	// MAP_PRIVATE	0x02
+	// MAP_FILE			0
+	// MAP_SHARED		0x01
+	// MAP_PRIVATE		0x02
 	// MAP_FIXED	    0x10
 	// MAP_ANONYMOUS	0x20
 	//
@@ -31,7 +30,7 @@ void* android_memory::handle_mmap2(uc_engine* uc, syscall_args& args)
 	if ((pblock = memmgr->mmap(args.arg[0], args.arg[1], args.arg[2], base ? SDB_MAP_FIXED : 0)))
 	{
 		qstring seg_name = "mmap_";
-		seg_name.sprnt("mmap_%p", pblock->guest);
+		seg_name.sprnt("mmap_%llX", pblock->guest);
 		uint32_t bitness = 1;  //default to 32
 		if (g_sk3wl_uc->debug_mode & UC_MODE_16) {
 			bitness = 0;
@@ -39,7 +38,7 @@ void* android_memory::handle_mmap2(uc_engine* uc, syscall_args& args)
 		else if (g_sk3wl_uc->debug_mode & UC_MODE_64) {
 			bitness = 2;
 		}
-		createNewSegment(seg_name.c_str(), (ea_t)pblock->guest, args.arg[1], args.arg[2], bitness);
+		createNewSegment(seg_name.c_str(), (ea_t)pblock->guest, args.arg[1], args.arg[2], bitness, false);
 
 		return reinterpret_cast<void*>(pblock->guest);
 	}
