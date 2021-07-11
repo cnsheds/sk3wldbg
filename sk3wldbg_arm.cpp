@@ -150,6 +150,10 @@ void sk3wldbg_arm::init_cpu_env()
 	{
 		tmp_val = tmp_val | (0xf << 20);
 		err = uc_reg_write(uc, UC_ARM_REG_C1_C0_2, &tmp_val);
+
+		tmp_val = 0xffff1111;
+		err = uc_reg_write(uc, UC_ARM_REG_D16, &tmp_val);
+
 		if (!err)
 		{
 			size_t enable_vfp = 0x40000000;
@@ -200,6 +204,10 @@ void sk3wldbg_aarch64::init_cpu_env()
 	{
 		tmp_val = tmp_val | (0xf << 20);
 		err = uc_reg_write(uc, UC_ARM_REG_C1_C0_2, &tmp_val);
+		
+		tmp_val = 0xffff1111;
+		err = uc_reg_write(uc, UC_ARM_REG_D16, &tmp_val);
+		
 		if (!err)
 		{
 			size_t enable_vfp = 0x40000000;
