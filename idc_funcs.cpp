@@ -91,7 +91,7 @@ void zero_fill(ea_t base, size_t size) {
 #endif
 }
 
-void createNewSegment(const char *name, ea_t base, uint32_t size, uint32_t perms, uint32_t bitness) {
+void createNewSegment(const char *name, ea_t base, uint32_t size, uint32_t perms, uint32_t bitness, bool bZero) {
    //create the new segment
    segment_t s;
    s.startEA = base;
@@ -110,9 +110,10 @@ void createNewSegment(const char *name, ea_t base, uint32_t size, uint32_t perms
    s.flags = SFL_DEBUG;
    
    msg("Creating segment %s with bitness %d and perms %d\n", name, s.bitness, s.perm);
-   if (add_segm_ex(&s, name, is_code ? "CODE" : "DATA", ADDSEG_QUIET | ADDSEG_NOSREG)) {
-      //zero out the newly created segment
-      zero_fill(base, size);
+   if (add_segm_ex(&s, name, is_code ? "CODE" : "DATA", ADDSEG_NOAA | ADDSEG_NOSREG)) {
+	   //zero out the newly created segment
+	   if (bZero)
+		   zero_fill(base, size);
    }
    else {
       msg("createNewSegment failed\n");

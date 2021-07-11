@@ -66,7 +66,7 @@ using std::vector;
 typedef qlist<debug_event_t> evt_list_t;
 typedef qlist<thid_t> thread_list;
 
-void createNewSegment(const char *name, ea_t base, uint32_t size, uint32_t perms, uint32_t bitness);
+void createNewSegment(const char *name, ea_t base, uint32_t size, uint32_t perms, uint32_t bitness, bool bZero=true);
 
 #if IDA_SDK_VERSION >= 710
 #define register_classes regclasses
