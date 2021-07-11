@@ -142,7 +142,8 @@ struct sk3wldbg : public debugger_t {
 
    sk3wldbg(const char *procname, uc_arch arch, uc_mode mode, const char *cpu_model = NULL);
    ~sk3wldbg();   
-   
+
+   virtual void init_cpu_env() {};
    virtual void install_initial_hooks();
    virtual bool is_system_call(uint8_t *inst, uint32_t size) {return false;};
    virtual void handle_system_call(uint8_t *inst, uint32_t size) {};

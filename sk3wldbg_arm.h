@@ -22,6 +22,7 @@
 
 struct sk3wldbg_arm : public sk3wldbg {
    sk3wldbg_arm();
+   void init_cpu_env();
    void check_mode(ea_t addr);
    bool save_ret_addr(uint64_t retaddr);
    XSyscall_handle m_syscall_handle;
@@ -30,6 +31,7 @@ struct sk3wldbg_arm : public sk3wldbg {
 
 struct sk3wldbg_aarch64 : public sk3wldbg {
    sk3wldbg_aarch64();
+   void init_cpu_env();
    void check_mode(ea_t addr);
    bool save_ret_addr(uint64_t retaddr);
    XSyscall_handle m_syscall_handle;

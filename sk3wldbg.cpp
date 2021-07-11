@@ -1918,6 +1918,7 @@ bool sk3wldbg::open() {
    memmgr = new mem_mgr(uc);
    msg("sk3wldbg::open uc == %p, memmgr = %p\n", this, memmgr);
    install_initial_hooks();
+   init_cpu_env();
    return true;
 }
 

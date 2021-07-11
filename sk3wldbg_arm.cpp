@@ -141,6 +141,23 @@ sk3wldbg_arm::sk3wldbg_arm() : sk3wldbg("ARM", UC_ARCH_ARM, UC_MODE_ARM) {
 
 }
 
+void sk3wldbg_arm::init_cpu_env()
+{
+	// 开启 VFP 指令支持
+	uint64_t tmp_val;
+	uc_err err = uc_reg_read(uc, UC_ARM_REG_C1_C0_2, &tmp_val);
+	if (!err)
+	{
+		tmp_val = tmp_val | (0xf << 20);
+		err = uc_reg_write(uc, UC_ARM_REG_C1_C0_2, &tmp_val);
+		if (!err)
+		{
+			size_t enable_vfp = 0x40000000;
+			err = uc_reg_write(uc, UC_ARM_REG_FPEXC, &enable_vfp);
+		}
+	}
+}
+
 void sk3wldbg_arm::check_mode(ea_t addr) {
    sel_t treg = get_segreg(addr, 20);   //20 is ARM T reg
    if (treg) {
@@ -172,6 +189,23 @@ sk3wldbg_aarch64::sk3wldbg_aarch64() : sk3wldbg("ARM", UC_ARCH_ARM64, UC_MODE_AR
    bpt_bytes = NULL;                ///< Array of bytes for a breakpoint instruction
    bpt_size = 0;                    ///< Size of this array
 
+}
+
+void sk3wldbg_aarch64::init_cpu_env()
+{
+	// 开启 VFP 指令支持
+	uint64_t tmp_val;
+	uc_err err = uc_reg_read(uc, UC_ARM_REG_C1_C0_2, &tmp_val);
+	if (!err)
+	{
+		tmp_val = tmp_val | (0xf << 20);
+		err = uc_reg_write(uc, UC_ARM_REG_C1_C0_2, &tmp_val);
+		if (!err)
+		{
+			size_t enable_vfp = 0x40000000;
+			err = uc_reg_write(uc, UC_ARM_REG_FPEXC, &enable_vfp);
+		}
+	}
 }
 
 void sk3wldbg_aarch64::check_mode(ea_t addr) {
